@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to run a Docker container for HSR development
-# Usage: ./RUN-DOCKER-CONTAINER.sh [PROJECT_NAME] [HSR_NUMBER]
+# Usage: ./RUN-DOCKER-CONTAINER.sh [PROJECT_NAME] [HSR_NUMBER] [--real|-r IP_ADDRESS]
 
 set -e
 
@@ -70,8 +70,42 @@ function enter_container() {
     }
 }
 
+function start_ros2_bridge() {
+    if [ -n "$REAL_IP" ]; then
+        echo "Starting ROS2 bridge to real Kachaka at $REAL_IP..."
+        ./external/kachaka-api/tools/ros2_bridge/start_bridge.sh "$REAL_IP" || {
+            echo "Failed to start ROS2 bridge. Please check the IP address and try again."
+            exit 1
+        }
+    else
+        echo "Entering the container..."
+        enter_container
+    fi
+}
+
+# Parse arguments
+REAL_IP=""
+ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --real|-r)
+            if [[ -z "$2" || "$2" == -* ]]; then
+                echo "Error: --real|-r requires an IP address"
+                exit 1
+            fi
+            REAL_IP="$2"
+            shift 2
+            ;;
+        *)
+            ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
 echo "Starting Docker container for HSR development..."
-setup_project_name "$@"
+setup_project_name "${ARGS[@]}"
 
 echo "Running Docker container..."
 run_docker_container
@@ -79,5 +113,5 @@ run_docker_container
 echo "Setting up X11 authentication..."
 setup_x11_auth
 
-echo "Entering the container..."
-enter_container
+# Either start the bridge or enter the container normally
+start_ros2_bridge

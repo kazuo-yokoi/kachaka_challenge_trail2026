@@ -9,8 +9,7 @@ services:
     environment:
       - DISPLAY=${DISPLAY}
       - ROS_DOMAIN_ID=1
-    networks:
-      - ros2
+    network_mode: host
     ipc: host
     privileged: true
     volumes: 
@@ -22,6 +21,3 @@ services:
     tty: true
     extra_hosts:
       - "display:host-gateway"
-networks:
-  ros2:
-    driver: bridge
