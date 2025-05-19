@@ -14,9 +14,9 @@ from rclpy.qos import QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolic
 from rclpy.qos import QoSProfile
 
 
-class NavManager(Node):
-    def __init__(self):
-        super().__init__(node_name='nav_manager')
+class NavManager:
+    def __init__(self, parent_node: Node):
+        self.parent_node = parent_node
         self.initial_pose = Pose()
         self.goal_handle = None
         self.result_future = None
@@ -24,23 +24,28 @@ class NavManager(Node):
         self.status = None
 
         amcl_pose_qos = QoSProfile(
-          durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-          reliability=QoSReliabilityPolicy.RELIABLE,
-          history=QoSHistoryPolicy.KEEP_LAST,
-          depth=1)
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
 
         self.initial_pose_received = False
-        self.nav_through_poses_client = ActionClient(self,
-                                                     NavigateThroughPoses,
-                                                     'navigate_through_poses')
-        self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
-        self.model_pose_sub = self.create_subscription(PoseWithCovarianceStamped,
-                                                       'amcl_pose',
-                                                       self._amcl_pose_callback,
-                                                       amcl_pose_qos)
-        self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped,
-                                                      'initialpose',
-                                                      10)
+        self.nav_through_poses_client = ActionClient(
+            self.parent_node, NavigateThroughPoses, "navigate_through_poses"
+        )
+        self.nav_to_pose_client = ActionClient(
+            self.parent_node, NavigateToPose, "navigate_to_pose"
+        )
+        self.model_pose_sub = self.parent_node.create_subscription(
+            PoseWithCovarianceStamped,
+            "amcl_pose",
+            self._amcl_pose_callback,
+            amcl_pose_qos,
+        )
+        self.initial_pose_pub = self.parent_node.create_publisher(
+            PoseWithCovarianceStamped, "initialpose", 10
+        )
 
     def set_initial_pose(self, initial_pose):
         self.initial_pose_received = False
@@ -56,14 +61,15 @@ class NavManager(Node):
         goal_msg = NavigateThroughPoses.Goal()
         goal_msg.poses = poses
 
-        self.info('Navigating with ' + str(len(poses)) + ' goals.' + '...')
-        send_goal_future = self.nav_through_poses_client.send_goal_async(goal_msg,
-                                                                         self._feedback_callback)
+        self.info("Navigating with " + str(len(poses)) + " goals." + "...")
+        send_goal_future = self.nav_through_poses_client.send_goal_async(
+            goal_msg, self._feedback_callback
+        )
         rclpy.spin_until_future_complete(self, send_goal_future)
         self.goal_handle = send_goal_future.result()
 
         if not self.goal_handle.accepted:
-            self.error('Goal with ' + str(len(poses)) + ' poses was rejected!')
+            self.error("Goal with " + str(len(poses)) + " poses was rejected!")
             return False
 
         self.result_future = self.goal_handle.get_result_async()
@@ -78,23 +84,34 @@ class NavManager(Node):
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = pose
 
-        self.info('Navigating to goal: ' + str(pose.pose.position.x) + ' ' +
-                      str(pose.pose.position.y) + '...')
-        send_goal_future = self.nav_to_pose_client.send_goal_async(goal_msg,
-                                                                   self._feedback_callback)
+        self.info(
+            "Navigating to goal: "
+            + str(pose.pose.position.x)
+            + " "
+            + str(pose.pose.position.y)
+            + "..."
+        )
+        send_goal_future = self.nav_to_pose_client.send_goal_async(
+            goal_msg, self._feedback_callback
+        )
         rclpy.spin_until_future_complete(self, send_goal_future)
         self.goal_handle = send_goal_future.result()
 
         if not self.goal_handle.accepted:
-            self.error('Goal to ' + str(pose.pose.position.x) + ' ' +
-                           str(pose.pose.position.y) + ' was rejected!')
+            self.error(
+                "Goal to "
+                + str(pose.pose.position.x)
+                + " "
+                + str(pose.pose.position.y)
+                + " was rejected!"
+            )
             return False
 
         self.result_future = self.goal_handle.get_result_async()
         return True
 
     def cancel_nav(self):
-        self.info('Canceling current goal.')
+        self.info("Canceling current goal.")
         if self.result_future:
             future = self.goal_handle.cancel_goal_async()
             rclpy.spin_until_future_complete(self, future)
@@ -108,13 +125,13 @@ class NavManager(Node):
         if self.result_future.result():
             self.status = self.result_future.result().status
             if self.status != GoalStatus.STATUS_SUCCEEDED:
-                self.info('Goal with failed with status code: {0}'.format(self.status))
+                self.info("Goal with failed with status code: {0}".format(self.status))
                 return True
         else:
             # Timed out, still processing, not complete yet
             return False
 
-        self.info('Goal succeeded!')
+        self.info("Goal succeeded!")
         return True
 
     def get_feedback(self):
@@ -124,37 +141,37 @@ class NavManager(Node):
         return self.status
 
     def wait_until_nav2_active(self):
-        self._wait_for_node_to_activate('amcl')
+        self._wait_for_node_to_activate("amcl")
         self._wait_for_initial_pose()
-        self._wait_for_node_to_activate('bt_navigator')
-        self.info('Nav2 is ready for use!')
+        self._wait_for_node_to_activate("bt_navigator")
+        self.info("Nav2 is ready for use!")
         return
 
     def _wait_for_node_to_activate(self, node_name):
         # Waits for the node within the tester namespace to become active
-        self.debug('Waiting for ' + node_name + ' to become active..')
-        node_service = node_name + '/get_state'
-        state_client = self.create_client(GetState, node_service)
+        self.debug("Waiting for " + node_name + " to become active..")
+        node_service = node_name + "/get_state"
+        state_client = self.parent_node.create_client(GetState, node_service)
         while not state_client.wait_for_service(timeout_sec=1.0):
-            self.info(node_service + ' service not available, waiting...')
+            self.info(node_service + " service not available, waiting...")
 
         req = GetState.Request()
-        state = 'unknown'
-        while (state != 'active'):
-            self.debug('Getting ' + node_name + ' state...')
+        state = "unknown"
+        while state != "active":
+            self.debug("Getting " + node_name + " state...")
             future = state_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
             if future.result() is not None:
                 state = future.result().current_state.label
-                self.debug('Result of get_state: %s' % state)
+                self.debug("Result of get_state: %s" % state)
             time.sleep(2)
         return
 
     def _wait_for_initial_pose(self):
         while not self.initial_pose_received:
-            self.info('Setting initial pose')
+            self.info("Setting initial pose")
             self._set_initial_pose()
-            self.info('Waiting for amcl_pose to be received')
+            self.info("Waiting for amcl_pose to be received")
             rclpy.spin_once(self, timeout_sec=1)
         return
 
@@ -169,24 +186,24 @@ class NavManager(Node):
     def _set_initial_pose(self):
         msg = PoseWithCovarianceStamped()
         msg.pose.pose = self.initial_pose
-        msg.header.frame_id = 'map'
-        msg.header.stamp = self.get_clock().now().to_msg()
-        self.info('Publishing Initial Pose')
+        msg.header.frame_id = "map"
+        msg.header.stamp = self.parent_node.get_clock().now().to_msg()
+        self.info("Publishing Initial Pose")
         self.initial_pose_pub.publish(msg)
         return
 
     def info(self, msg):
-        self.get_logger().info(msg)
+        self.parent_node.get_logger().info(msg)
         return
 
     def warn(self, msg):
-        self.get_logger().warn(msg)
+        self.parent_node.get_logger().warn(msg)
         return
 
     def error(self, msg):
-        self.get_logger().error(msg)
+        self.parent_node.get_logger().error(msg)
         return
 
     def debug(self, msg):
-        self.get_logger().debug(msg)
+        self.parent_node.get_logger().debug(msg)
         return
