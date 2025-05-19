@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "alias create_ros2_pkg="cookiecutter ../../template/"" >> ~/.bashrc
+echo 'alias create_ros2_pkg="cookiecutter ../../template/"' >> ~/.bashrc
 
 if [ ! -d "/app/.venv" ]; then
     echo "Creating virtual environment..."
