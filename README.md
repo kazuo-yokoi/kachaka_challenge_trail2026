@@ -4,6 +4,16 @@
 
 This repository provides a ROS 2-based development environment and tools for working with [Kachaka](https://kachaka.life/), including simulation, navigation, mapping, and API integration. It combines official Kachaka API resources and custom development kits for both real and simulated robots.
 
+## Requirements
+
+For Windows:
+- WSL 2 (Follow [this instruction](https://learn.microsoft.com/en-us/windows/wsl/install) to install WSL and Ubuntu distribution)
+- Docker (Follow [this instruction](https://docs.docker.com/engine/install/ubuntu/) to install)
+
+> For MacOS: due to the OpenGL compatibility issue, you won't be able to run this repository on MacOS.
+
+You also need to register your GitHub account and register your SSH public key to GitHub to pull the repository.
+
 ## Repository Structure
 
 - `ros2_ws/src/kachaka_ros2_dev_kit/`  
