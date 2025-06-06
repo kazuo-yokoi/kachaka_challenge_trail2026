@@ -14,7 +14,7 @@ find_package(rclpy REQUIRED)
 ament_python_install_package(${PROJECT_NAME} PACKAGE_DIR src/${PROJECT_NAME})
 
 # スクリプトのインストール
-install(PROGRAMS scripts/executor.py DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/executor.py scripts/human_follower.py DESTINATION lib/${PROJECT_NAME})
 
 install(
   DIRECTORY launch

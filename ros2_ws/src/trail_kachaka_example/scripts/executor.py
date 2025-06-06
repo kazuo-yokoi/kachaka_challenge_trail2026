@@ -19,9 +19,6 @@ from trail_kachaka_example.src.trail_kachaka_example.some_sub_task2 import (
 
 from trail_kachaka_example.src.trail_kachaka_example.llm_manager import LLMManager
 
-from ros2_ws.src.trail_kachaka_example.src.trail_kachaka_example.human_follower import (
-    ExampleHumanFollowerNode,
-)
 
 
 class ExampleTaskManager(Node):
@@ -74,22 +71,16 @@ class ExampleTaskManager(Node):
 
 def main():
     rclpy.init()
-    executor = SingleThreadedExecutor()
     task_manager = ExampleTaskManager()
-    example_node = ExampleHumanFollowerNode()
-    executor.add_node(task_manager)
-    executor.add_node(example_node)
 
     try:
-        executor.spin()
+        task_manager.execute_task() 
     except KeyboardInterrupt:
         rclpy.logging.get_logger("executor").info(
             "Keyboard interrupt, shutting down..."
         )
     finally:
-        executor.shutdown()
         task_manager.destroy_node()
-        example_node.destroy_node()
         rclpy.shutdown()
 
 
