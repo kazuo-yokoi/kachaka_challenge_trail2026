@@ -1,7 +1,7 @@
 import rclpy
 import rclpy.logging
 
-from ros2_ws.src.trail_kachaka_example.src.trail_kachaka_example.human_follower import (
+from trail_kachaka_example.human_follower import (
     ExampleHumanFollowerNode,
 )
 

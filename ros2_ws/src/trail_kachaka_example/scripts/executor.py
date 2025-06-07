@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import rclpy
 import rclpy.logging
 from rclpy.node import Node
@@ -8,16 +9,16 @@ from geometry_msgs.msg import Pose, Point, Quaternion
 import rclpy.service
 from trail_kachaka_msgs.srv import ExampleHumanFollower
 
-from kachaka_utils.src.kachaka_utils.voice_manager import VoiceManager
-from kachaka_utils.src.kachaka_utils.nav_manager import NavManager
-from trail_kachaka_example.src.trail_kachaka_example.some_sub_task1 import (
+from kachaka_utils.voice_manager import VoiceManager
+from kachaka_utils.nav_manager import NavManager
+from trail_kachaka_example.some_sub_task1 import (
     ExampleSubTaskManager1,
 )
-from trail_kachaka_example.src.trail_kachaka_example.some_sub_task2 import (
+from trail_kachaka_example.some_sub_task2 import (
     ExampleSubTaskManager2,
 )
 
-from trail_kachaka_example.src.trail_kachaka_example.llm_manager import LLMManager
+from trail_kachaka_example.llm_manager import LLMManager
 
 
 
@@ -60,7 +61,7 @@ class ExampleTaskManager(Node):
 
         self.human_follower_srv.wait_for_service(timeout_sec=1.0)
         req = ExampleHumanFollower.Request()
-        req.who_to_follow = "David"
+        req.who_to_track = "David"
         req.distance = 0.5
 
         future = self.human_follower_srv.call_async(req)
