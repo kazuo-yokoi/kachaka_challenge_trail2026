@@ -1,7 +1,7 @@
 from geometry_msgs.msg import Pose, Point, Quaternion
 
-from kachaka_utils.src.kachaka_utils.voice_manager import VoiceManager
-from kachaka_utils.src.kachaka_utils.nav_manager import NavManager
+from kachaka_utils.voice_manager import VoiceManager
+from kachaka_utils.nav_manager import NavManager
 
 
 class ExampleSubTaskManager1:

@@ -65,7 +65,7 @@ class NavManager:
         send_goal_future = self.nav_through_poses_client.send_goal_async(
             goal_msg, self._feedback_callback
         )
-        rclpy.spin_until_future_complete(self, send_goal_future)
+        rclpy.spin_until_future_complete(self.parent_node, send_goal_future)
         self.goal_handle = send_goal_future.result()
 
         if not self.goal_handle.accepted:
@@ -94,7 +94,7 @@ class NavManager:
         send_goal_future = self.nav_to_pose_client.send_goal_async(
             goal_msg, self._feedback_callback
         )
-        rclpy.spin_until_future_complete(self, send_goal_future)
+        rclpy.spin_until_future_complete(self.parent_node, send_goal_future)
         self.goal_handle = send_goal_future.result()
 
         if not self.goal_handle.accepted:
@@ -114,14 +114,14 @@ class NavManager:
         self.info("Canceling current goal.")
         if self.result_future:
             future = self.goal_handle.cancel_goal_async()
-            rclpy.spin_until_future_complete(self, future)
+            rclpy.spin_until_future_complete(self.parent_node, future)
         return
 
     def is_nav_complete(self):
         if not self.result_future:
             # task was cancelled or completed
             return True
-        rclpy.spin_until_future_complete(self, self.result_future, timeout_sec=0.10)
+        rclpy.spin_until_future_complete(self.parent_node, self.result_future, timeout_sec=0.10)
         if self.result_future.result():
             self.status = self.result_future.result().status
             if self.status != GoalStatus.STATUS_SUCCEEDED:
@@ -160,7 +160,7 @@ class NavManager:
         while state != "active":
             self.debug("Getting " + node_name + " state...")
             future = state_client.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
+            rclpy.spin_until_future_complete(self.parent_node, future)
             if future.result() is not None:
                 state = future.result().current_state.label
                 self.debug("Result of get_state: %s" % state)
@@ -172,7 +172,7 @@ class NavManager:
             self.info("Setting initial pose")
             self._set_initial_pose()
             self.info("Waiting for amcl_pose to be received")
-            rclpy.spin_once(self, timeout_sec=1)
+            rclpy.spin_once(self.parent_node, timeout_sec=1)
         return
 
     def _amcl_pose_callback(self, msg):
