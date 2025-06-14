@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     make \
     terminator \
+    '~nros-jazzy-rqt*' \
     ros-jazzy-teleop-twist-keyboard \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/*
