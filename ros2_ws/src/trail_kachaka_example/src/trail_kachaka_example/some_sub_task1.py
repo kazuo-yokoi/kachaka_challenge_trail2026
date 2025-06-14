@@ -11,8 +11,5 @@ class ExampleSubTaskManager1:
 
     def execute_sub_task1(self) -> bool:
         self.voice_manager.speak("まず初めにサブタスク１を行います。")
-        self.nav_manager.go_to_pose(
-            Pose(position=Point(-0.3, 0, 0), orientation=Quaternion(0, 0, 0, 0))
-        )
-
+        self.nav_manager.go_to(x=-0.3, y=0.0)
         return True
