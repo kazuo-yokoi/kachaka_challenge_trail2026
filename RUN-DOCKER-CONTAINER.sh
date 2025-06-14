@@ -96,7 +96,7 @@ function enter_container() {
 function start_ros2_bridge() {
     if [ -n "$REAL_IP" ]; then
         echo "Starting ROS2 bridge to real Kachaka at $REAL_IP..."
-        ./external/kachaka-api/tools/ros2_bridge/start_bridge.sh "$REAL_IP" "kachaka" -d || {
+        API_GRPC_BRIDGE_SERVER_URI="${REAL_IP}:26400" NAMESPACE=kachaka FRAME_PREFIX="" docker compose -f ./external/kachaka-api/tools/ros2_bridge/docker-compose.yaml up -d ros2_bridge || {
             echo "Failed to start ROS2 bridge. Please check the IP address and try again."
             exit 1
         }
