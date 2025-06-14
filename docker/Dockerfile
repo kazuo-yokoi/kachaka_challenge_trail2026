@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     terminator \
     sudo \
     xauth \
+    '~nros-jazzy-rqt*' \
+    ros-jazzy-teleop-twist-keyboard \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/*
 
