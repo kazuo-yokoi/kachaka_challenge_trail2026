@@ -11,6 +11,4 @@ class ExampleSubTaskManager2:
 
     def execute_sub_task2(self):
         self.voice_manager.speak("次にサブタスク２を行います。")
-        self.nav_manager.go_to_pose(
-            Pose(position=Point(-0.3, 0, 0), orientation=Quaternion(0, 0, 0, 0))
-        )
+        self.nav_manager.go_to(x=-0.3, y=0.0)

@@ -2,13 +2,8 @@
 import rclpy
 import rclpy.logging
 from rclpy.node import Node
-from rclpy.executors import SingleThreadedExecutor
 
-from geometry_msgs.msg import Pose, Point, Quaternion
-
-import rclpy.service
 from trail_kachaka_msgs.srv import ExampleHumanFollower
-
 from kachaka_utils.voice_manager import VoiceManager
 from kachaka_utils.nav_manager import NavManager
 from trail_kachaka_example.some_sub_task1 import (
@@ -38,9 +33,10 @@ class ExampleTaskManager(Node):
 
     def execute_task(self):
         self.voice_manager.speak("こんにちは、私はカチャカです。")
-        self.nav_manager.go_to_pose(
-            Pose(position=Point(0.3, 0, 0), orientation=Quaternion(0, 0, 0, 0))
-        )
+        if not self.nav_manager.go_to(x=0.0, y=0.0):
+            self.get_logger().error("Failed to navigate to the initial position.")
+            return
+
         success = self.subtask1.execute_sub_task1()
         if success:
             self.get_logger().info("Subtask 1 completed successfully.")

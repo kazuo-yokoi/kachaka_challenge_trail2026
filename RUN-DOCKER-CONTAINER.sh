@@ -30,11 +30,9 @@ function setup_project_name() {
 
 function run_docker_container() {
   # Handle different OS environments
-  COMPOSE_FILE="./docker/docker-compose.yml"
   DISPLAY="${DISPLAY:-:0}"
   PROFILE="linux"
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    COMPOSE_FILE="./docker/darwin.docker-compose.yml"
     DISPLAY=":0"
     PROFILE="darwin"
     echo ""
@@ -56,12 +54,12 @@ function run_docker_container() {
       docker start "${CONTAINER}" || {
         echo "Failed to start container. Removing and recreating..."
         docker rm "${CONTAINER}" || true
-        DISPLAY=$DISPLAY docker compose --compatibility -p "${PROJECT}" --profile "${PROFILE}" -f "${COMPOSE_FILE}" up -d
+        DISPLAY=$DISPLAY docker compose --compatibility -p "${PROJECT}" --profile "${PROFILE}" -f ./docker/docker-compose.yml up -d
       }
     else
       echo "Container '${CONTAINER}' does not exist."
       echo "Creating a new container..."
-      DISPLAY=$DISPLAY docker compose --compatibility -p "${PROJECT}" --profile "${PROFILE}" -f "${COMPOSE_FILE}" up -d
+      DISPLAY=$DISPLAY docker compose --compatibility -p "${PROJECT}" --profile "${PROFILE}" -f ./docker/docker-compose.yml up -d
     fi
   fi
 }
