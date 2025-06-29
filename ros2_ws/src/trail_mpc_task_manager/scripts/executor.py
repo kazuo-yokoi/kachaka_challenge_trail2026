@@ -1,3 +1,5 @@
+#!usr/bin/env python3
+
 from kachaka_utils.position_helper import get_named_pose
 from kachaka_utils.nav_manager import NavManager
 from kachaka_utils.voice_manager import VoiceManager
@@ -11,7 +13,7 @@ from std_srvs.srv import SetBool
 class PartyTaskExecutor(Node):
     def __init__(self):
         super().__init__('party_task_executor')
-        self.state = 'go_to_host_room'
+        self.state = 'wait_for_host_ready'
         self.nav_manager = NavManager(self)
         self.voice_manager = VoiceManager(self)
         self.wait_state = WaitForHostReady(self,self.voice_manager)

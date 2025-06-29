@@ -156,14 +156,3 @@ class Follower(Node):
             self._positon_history.clear() #新たに人が見つかった時に履歴をクリアする
         self._person_in_detection = is_person_found
 
-
-def main(args=None):
-    rclpy.init(args=args)
-    follower = Follower()
-    rclpy.spin(follower)
-    follower.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()

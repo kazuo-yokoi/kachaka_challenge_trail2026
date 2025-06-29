@@ -1,10 +1,13 @@
 #トピックに送られてくる画像をサブスクライブし、推論結果をパブリッシュするノード
+import numpy as np
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
+import cv2
 from ultralytics import YOLO
 from kachaka_ros2_dev_kit.kachaka_interfaces.msg import ObjectDetection, ObjectDetectionListStamped
 from sensor_msgs.msg import RegionOfInterest 
