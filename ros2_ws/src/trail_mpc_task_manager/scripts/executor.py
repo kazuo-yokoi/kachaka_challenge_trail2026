@@ -1,19 +1,20 @@
-#!usr/bin/env python3
+#!/usr/bin/env python3
 
 from kachaka_utils.position_helper import get_named_pose
 from kachaka_utils.nav_manager import NavManager
 from kachaka_utils.voice_manager import VoiceManager
-from trail_mpc_task_manager.wait_for_host_ready import WaitForHostReady
+from trail_mpc_task_manager.wait_for_ready import WaitForHostReady
 
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import SetBool
+from std_msgs.msg import Bool
 
 
 class PartyTaskExecutor(Node):
     def __init__(self):
         super().__init__('party_task_executor')
-        self.state = 'wait_for_host_ready'
+        self.state = 'go_to_host_room'
         self.nav_manager = NavManager(self)
         self.voice_manager = VoiceManager(self)
         self.wait_state = WaitForHostReady(self,self.voice_manager)
@@ -26,6 +27,9 @@ class PartyTaskExecutor(Node):
             Bool, "/follower/host_stopped", self._host_stopped_callback, 10
         )
         self._follow_started = False
+
+        pose = get_named_pose('host_room')
+        x = self.nav_manager.go_to_pose(pose)  # 座標名 or PoseStamped
 
         # --- メインループタイマー ---
         self.timer = self.create_timer(1.0, self._main_loop)
@@ -49,8 +53,11 @@ class PartyTaskExecutor(Node):
         if self.state == 'go_to_host_room':
             self.get_logger().info("Going to host room...")
             pose = get_named_pose('host_room')
-            self.nav_manager.go_to_pose(pose)  # 座標名 or PoseStamped
+            x = self.nav_manager.go_to_pose(pose)  # 座標名 or PoseStamped
+            self.get_logger().info(str(x))
+            self.get_logger().info(self.state)
             self.state = 'wait_for_host_ready'
+            self.get_logger().info(self.state)
         elif self.state == 'wait_for_host_ready':
             self.get_logger().info("Waiting for host to be ready...")
             if not hasattr(self, '_wait_started'):

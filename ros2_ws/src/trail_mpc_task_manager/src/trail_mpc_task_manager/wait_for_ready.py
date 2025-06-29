@@ -28,7 +28,7 @@ class WaitForHostReady:
             if self._person_detected_start_time is None:
                 self._person_detected_start_time = self.parent_node.get_clock().now()
             else:
-                elapsed = (self.node.get_clock().now() - self._person_detected_start_time).nanoseconds/1e9
+                elapsed = (self.parent_node.get_clock().now() - self._person_detected_start_time).nanoseconds/1e9
                 if elapsed >= 10:
                     self.voice_manager.speak('追従を開始します。パーティー会場まで歩いてください')
                     return True

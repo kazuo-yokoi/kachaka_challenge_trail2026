@@ -1,5 +1,6 @@
 #トピックに送られてくる画像をサブスクライブし、推論結果をパブリッシュするノード
 import numpy as np
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
@@ -9,7 +10,7 @@ from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 import cv2
 from ultralytics import YOLO
-from kachaka_ros2_dev_kit.kachaka_interfaces.msg import ObjectDetection, ObjectDetectionListStamped
+from kachaka_interfaces.msg import ObjectDetection, ObjectDetectionListStamped
 from sensor_msgs.msg import RegionOfInterest 
 
 class HumanDetector(Node):
@@ -32,7 +33,8 @@ class HumanDetector(Node):
             10 #queue sizeの設定はどうすれば良いか
         )
         self.cv_bridge = CvBridge()
-        self.model = YOLO('yolov11n.pt')
+        self.path = Path(__file__).resolve().parent.parent.parent
+        self.model = YOLO(self.path / 'yolo11n.pt')
 
     def process_image(self, msg):
         """受け取った画像を処理するコールバック関数"""
@@ -40,6 +42,9 @@ class HumanDetector(Node):
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         results = self.model(image)
         boxes = results[0].boxes
+        cv2.imshow("TEST",results[0].plot())
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            exit()
         msg_array = ObjectDetectionListStamped()
 
         for i in range(len(boxes)):
@@ -55,14 +60,6 @@ class HumanDetector(Node):
             roi.width = int(boxes.xyxy[i][2]-boxes.xyxy[i][0])
             msg.roi = roi
             msg_array.detection.append(msg)
+            # self.get_logger().info(str(msg_array))
 
         self.publisher.publish(msg_array)
-
-def main(args=None):
-    rclpy.init(args=args)
-    human_detector = HumanDetector()
-    rclpy.spin(human_detector)
-    rclpy.shutdown()
-
-if __name__ = '__main__':
-    main()

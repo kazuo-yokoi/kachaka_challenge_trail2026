@@ -100,6 +100,7 @@ class NavManager:
         # Sends a `NavToPose` action request and waits for completion
         self.debug("Waiting for 'NavigateToPose' action server")
         while not self.nav_to_pose_client.wait_for_server(timeout_sec=1.0):
+            print("c")
             self.info("'NavigateToPose' action server not available, waiting...")
 
         goal_msg = NavigateToPose.Goal()
@@ -115,7 +116,9 @@ class NavManager:
         send_goal_future = self.nav_to_pose_client.send_goal_async(
             goal_msg, self._feedback_callback
         )
+        print("before")
         rclpy.spin_until_future_complete(self.parent_node, send_goal_future)
+        print("after")
         self.goal_handle = send_goal_future.result()
 
         if not self.goal_handle.accepted:
@@ -127,7 +130,7 @@ class NavManager:
                 + " was rejected!"
             )
             return False
-
+        
         self.result_future = self.goal_handle.get_result_async()
         return True
 
@@ -142,11 +145,14 @@ class NavManager:
         return self.get_result() == GoalStatus.STATUS_SUCCEEDED
 
     def go_to_pose(self, pose: PoseStamped):
+        print("a")
         """Synchronous version of go_to_pose that waits for navigation to complete"""
         if not self.go_to_pose_async(pose):
+            print("False")
             return False
-
+        print("b")
         while not self.is_nav_complete():
+            print(self.is_nav_complete())
             rclpy.spin_once(self.parent_node, timeout_sec=0.1)
 
         return self.get_result() == GoalStatus.STATUS_SUCCEEDED
@@ -222,6 +228,7 @@ class NavManager:
 
     def _feedback_callback(self, msg):
         self.feedback = msg.feedback
+        print(self.feedback)
         return
 
     def _set_initial_pose(self):
