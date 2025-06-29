@@ -1,7 +1,9 @@
 #トピックに送られてくる画像をサブスクライブし、推論結果をパブリッシュするノード
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from rclpy.qos import QoSProfile, ReliabilityPolicy
+
+from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 from kachaka_ros2_dev_kit.kachaka_interfaces.msg import ObjectDetection, ObjectDetectionListStamped
@@ -10,11 +12,16 @@ from sensor_msgs.msg import RegionOfInterest
 class HumanDetector(Node):
     def __init__(self):
         super().__init__('human_detector')
+
+        qos_profile = QoSProfile(
+            reliability = ReliabilityPolicy.BEST_EFFORT,
+            depth = 10
+        )
         self.subscription = self.create_subscription(
-            Image, 
-            '/kachaka/front_camera/image_raw', 
+            CompressedImage, 
+            '/kachaka/front_camera/image_raw/compressed', 
             self.process_image,
-            10 #queue sizeの設定はどうすれば良いか
+            qos_profile
         )  
         self.publisher = self.create_publisher(
             ObjectDetectionListStamped,
@@ -26,7 +33,8 @@ class HumanDetector(Node):
 
     def process_image(self, msg):
         """受け取った画像を処理するコールバック関数"""
-        image = self.cv_bridge.imgmsg_to_cv2(msg,'bgr8')
+        np_arr = np.frombuffer(msg.data, np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         results = self.model(image)
         boxes = results[0].boxes
         msg_array = ObjectDetectionListStamped()
@@ -46,3 +54,12 @@ class HumanDetector(Node):
             msg_array.detection.append(msg)
 
         self.publisher.publish(msg_array)
+
+def main(args=None):
+    rclpy.init(args=args)
+    human_detector = HumanDetector()
+    rclpy.spin(human_detector)
+    rclpy.shutdown()
+
+if __name__ = '__main__':
+    main()
