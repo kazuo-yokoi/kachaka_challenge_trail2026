@@ -28,6 +28,7 @@ class PartyTaskExecutor(Node):
     def __init__(self):
         super().__init__('party_task_executor')
         self.state = 'go_to_host_room'
+        self.guest_number = 1
         self.nav_manager = NavManager(self)
         self.voice_manager = VoiceManager(self)
         self.camera_manager = CameraManager(self)
@@ -49,6 +50,14 @@ class PartyTaskExecutor(Node):
             Bool, "/follower/host_stopped", self._host_stopped_callback, 10
         )
         self._follow_started = False
+
+        #--- guest_meet_taskノード制御用のパブリッシャーとサブスクライバー ---
+        self._guest_meet_publisher = self.create_publisher(Bool, "/guest_meet/start", 10)
+        self._guest_meet_subscriber = self.create_subscription(Bool, "/guest_meet/end", self._guest_meet_callback, 10)
+
+        #--- find_empty_chairノード制御用のパブリッシャーとサブスクライバー ---
+        self._find_empty_chair_publisher = self.create_publisher(Bool, "/find_empty_chair/start", 10)
+        self._find_empty_chair_subscriber = self.create_subscription(Bool, "/find_empty_chair/end", self._find_empty_chair_callback, 10)
 
     def start_mission(self):
         """ミッションを開始する"""
@@ -111,6 +120,8 @@ class PartyTaskExecutor(Node):
         self.get_logger().info('State: follow_host. Starting...')
         self._set_following_enabled(True)
         self._follow_started = True
+        # 300秒のタイムアウトを設定
+        #self.timeout_timer = self.create_timer(300.0, self._follow_timeout)
 
     def _set_following_enabled(self, enabled: bool):
         """追従ノードの有効/無効をリクエストする"""
@@ -148,7 +159,21 @@ class PartyTaskExecutor(Node):
                 self._handle_mission_failure("現在位置の取得に失敗しました。")
                 return
             # 3. 次のタスク（玄関への移動）を実行
+            self._follow_started = False
             self._execute_go_to_entrance()
+
+    # def _follow_timeout(self):
+    #     """followのタイムアウト時に実行される"""
+    #     # タイムアウトタイマーを破棄
+    #     if self.timeout_timer:
+    #         self.timeout_timer.cancel()
+    #         self.timeout_timer.destroy()
+
+    #     # 状態がまだ follow_host の場合のみタイムアウト処理を実行
+    #     if self.state == 'follow_host':
+    #         self.get_logger().error("Timeout: Host following has not completed in time.")
+    #         self._set_following_enabled(False)
+    #         self._handle_mission_failure("ホストの追跡がタイムアウトしました。")
 
     def _execute_go_to_entrance(self):
         """玄関へ移動するタスク"""
@@ -176,17 +201,6 @@ class PartyTaskExecutor(Node):
         # 60秒のタイムアウトを設定
         self.timeout_timer = self.create_timer(60.0, self._wait_for_guest_timeout)
 
-    def _on_guest_ready_done(self, success: bool):
-        """ゲストのWaitForReadyタスク完了時のコールバック"""
-        if success:
-            self.get_logger().info("Guest is ready. Execute guest_meet_task.")
-            if self.guest_meet_task.execute_guest_meet():
-                self._execute_return_to_host()
-        else:
-            # 失敗した場合の処理
-            self.get_logger().error("WaitForReady task failed or timed out.")
-            self._handle_mission_failure("ゲストの準備を確認できませんでした。")
-
     def _wait_for_guest_timeout(self):
         """wait_for_guestのタイムアウト時に実行される"""
         # タイムアウトタイマーを破棄
@@ -200,6 +214,30 @@ class PartyTaskExecutor(Node):
             self.wait_state.cancel() # 進行中のタスクを中断させる
             self._handle_mission_failure("時間内にゲストを認識できませんでした。")
 
+    def _on_guest_ready_done(self, success: bool):
+        """ゲストのWaitForReadyタスク完了時のコールバック"""
+        if success:
+            self.get_logger().info("Guest is ready. Execute guest_meet_task.")
+            self._execute_guest_meet_task()
+        else:
+            # 失敗した場合の処理
+            self.get_logger().error("WaitForReady task failed or timed out.")
+            self._handle_mission_failure("ゲストの準備を確認できませんでした。")
+
+    # --- 追加 ---
+    def _execute_guest_meet_task(self):
+        """ゲストの服装について話すタスクを開始"""
+        self.state = 'guest_meet'
+        self.get_logger().info('State: guest_meet. Starting...')
+        msg = Bool()
+        msg.data = True
+        self._guest_meet_publisher.publish(msg)
+
+    def _guest_meet_callback(self, msg:Bool):
+        """guest_meet_taskの完了通知を受け取るコールバック関数"""
+        if self.state = 'guest_meet' and msg.data:
+            self.get_logger().info("Guest_meet_task has completed.")
+            self._execute_return_to_host()
 
     def _execute_return_to_host(self):
         """保存したホストの場所に戻る"""
@@ -223,12 +261,25 @@ class PartyTaskExecutor(Node):
             self.get_logger().error("Failed to return to host's location.")
             self._handle_mission_failure("元の場所に戻れませんでした。")
 
+    # --- 追加 ---
     def _execute_find_empty_chair(self):
         """ゲストに空いている席を示す"""
         self.state = 'find_empty_chair'
         self.get_logger().info("State: find_empty_chair")
-        self.find_empty_chair.execute_find_empty_chair()
-        self._execute_go_to_entrance()
+        msg = Bool()
+        msg.data = True
+        self._find_empty_chair_publisher.publish(msg)
+
+    def _find_empty_chair_callback(self, msg.data):
+        """find_empty_chairノードの完了通知を受け取るコールバック関数"""
+        if self.state == 'find_empty_chair' and msg.data:
+            self.get_logger().info("Find_empty_chair task has completed.")
+            if self.guest_number == 1:
+                self.guest_number = 2
+                self._execute_go_to_entrance()
+            elif self.guest_number == 2:
+                self.voice_manager().speak("全てのタスクが完了しました。")
+    
 
 
     def _handle_mission_failure(self, reason: str):
@@ -244,6 +295,7 @@ class PartyTaskExecutor(Node):
             self.wait_state.cancel()    
             self.voice_manager.speak("タスクを再実行します")
             self._execute_wait_for_host_ready()
+        #if self.state == 'follow_host':
         if self.state == 'go_to_entrance':
             self.nav_manager.cancel_nav() 
             self.voice_manager.speak("玄関に到達できませんでした。再試行します")

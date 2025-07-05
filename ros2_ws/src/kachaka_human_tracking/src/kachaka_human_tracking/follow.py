@@ -93,6 +93,8 @@ class Follower(Node):
             self._position_history.clear()
             # 0.1秒ごとにメインループ(_publish_cmd_vel)を実行するタイマーを開始
             self._timer = self.create_timer(0.1, self._publish_cmd_vel)
+            # 300秒のタイムアウトを設定
+            #self._timeout_timer = self.create_timer(300.0, self._follow_timeout)
         else:
             self.get_logger().info("Following disabled.")
             self._state = FollowerState.IDLE
@@ -288,9 +290,30 @@ class Follower(Node):
         # メインループを停止
         if self._timer and not self._timer.is_canceled():
             self._timer.cancel()
+        # if self._timeout_timer and not self._timeout_timer.is_canceled():
+        #     self._timeout_timer.cancel()
 
 
     def _stop_robot(self):
         """ロボットを確実に停止させる"""
         cmd_vel = Twist()
         self._publisher.publish(cmd_vel)
+
+    # def _follow_timeout(self):
+    #     """追跡がタイムアウトした時の処理"""
+    #     self.get_logger().info('Following task timed out.')
+    #     self._state = FollowerState.IDLE # タスク完了
+    #     if self._timeout_timer and not self._timeout_timer.is_canceled():
+    #         self._timeout_timer.cancel()
+        
+    #     # Executorにホストが停止したことを通知
+    #     msg = Bool()
+    #     msg.data = True
+    #     self._stopped_publisher.publish(msg)
+        
+    #     # メインループを停止
+    #     if self._timer and not self._timer.is_canceled():
+    #         self._timer.cancel()
+    #     if self._confirmation_timer and not self._confirmation_timer.is_canceled():
+    #         self._confirmation_timer.cancel()
+
