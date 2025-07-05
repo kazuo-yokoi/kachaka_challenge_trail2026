@@ -4,6 +4,7 @@ from std_msgs.msg import Header
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from tf2_msgs.msg import TFMessage
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import NavigateThroughPoses, NavigateToPose
 
@@ -296,7 +297,7 @@ class NavManager:
             parent = transform.header.frame_id
             child = transform.child_frame_id
 
-            if parent == "map" and child == "base_link":
+            if parent == "map" and child == "odom":
                 self.current_pose = Pose()
                 self.current_pose.position = transform.transform.translation
                 self.current_pose.orientation = transform.transform.rotation

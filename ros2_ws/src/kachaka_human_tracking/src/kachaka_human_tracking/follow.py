@@ -88,7 +88,7 @@ class Follower(Node):
         if request.data:
             self.get_logger().info("Following enabled. Starting main loop.")
             self._state = FollowerState.FOLLOWING
-            self.voice_manager().speak("追従を開始します。パーティー会場まで歩いてください。到着したら10秒間止まってください。", wait=True)
+            self.voice_manager.speak("追従を開始します。パーティー会場まで歩いてください。到着したら10秒間止まってください。")
             self._person_in_detection = False
             self._position_history.clear()
             # 0.1秒ごとにメインループ(_publish_cmd_vel)を実行するタイマーを開始
@@ -249,7 +249,7 @@ class Follower(Node):
             self._state = FollowerState.CONFIRMING_STOP
             self._stop_robot()
             # 音声で呼びかけ
-            self.voice_manager.speak("到着しましたか。到着したら動かないでください。到着してなければ近くで動いてください",wait=True)
+            self.voice_manager.speak("到着しましたか。到着したら動かないでください。到着してなければ近くで動いてください")
             # 確認用のタイマーを開始
             self._confirmation_timer = self.create_timer(CONFIRMATION_TIMEOUT_SEC, self._on_confirmation_timeout)
             # 確認期間中の動きを検出するため、履歴をクリア

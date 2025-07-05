@@ -11,8 +11,8 @@ def get_named_pose(name: str) -> PoseStamped:
         pose.pose.orientation.z = 0.707
         pose.pose.orientation.w = 0.707
     elif name == "entrance":
-        pose.pose.position.x = -0.5
-        pose.pose.position.y = 1.8
+        pose.pose.position.x = 7.8
+        pose.pose.position.y = -2.2
         pose.pose.orientation.w = 1.0
     else:
         raise ValueError(f"Unknown location: {name}")
