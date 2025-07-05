@@ -107,7 +107,6 @@ class PartyTaskExecutor(Node):
         """ホストの追従タスクを開始"""
         self.state = 'follow_host'
         self.get_logger().info('State: follow_host. Starting...')
-        self.voice_manager.speak('追従を開始します。')
         self._set_following_enabled(True)
         self._follow_started = True
 
@@ -246,6 +245,10 @@ class PartyTaskExecutor(Node):
             self.nav_manager.cancel_nav() 
             self.voice_manager.speak("玄関に到達できませんでした。再試行します")
             self._execute_go_to_entrance()
+        if self.state == 'wait_for_guest_ready':
+            self.wait_state.cancel()
+            self.voice_manager.speak("タスクを再実行します")
+            self._execute_wait_for_guest_ready()
     
 
             

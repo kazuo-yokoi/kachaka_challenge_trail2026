@@ -27,12 +27,12 @@ class NavManager:
         # --- 追加：現在のポーズを保持する変数を追加 ---
         self.current_pose: Pose | None = None
 
-        amcl_pose_qos = QoSProfile(
-            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-            reliability=QoSReliabilityPolicy.RELIABLE,
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=1,
-        )
+        # amcl_pose_qos = QoSProfile(
+        #     durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        #     reliability=QoSReliabilityPolicy.RELIABLE,
+        #     history=QoSHistoryPolicy.KEEP_LAST,
+        #     depth=1,
+        # )
 
         self.initial_pose_received = False
         self.nav_through_poses_client = ActionClient(
@@ -41,12 +41,13 @@ class NavManager:
         self.nav_to_pose_client = ActionClient(
             self.parent_node, NavigateToPose, "navigate_to_pose"
         )
-        self.model_pose_sub = self.parent_node.create_subscription(
-            PoseWithCovarianceStamped,
-            "amcl_pose",
-            self._amcl_pose_callback,
-            amcl_pose_qos,
-        )
+        self.model_pose_sub = self.parent_node.create_subscription(TFMessage, '/tf', self._tf_callback, 10)
+        # self.model_pose_sub = self.parent_node.create_subscription(
+        #     PoseWithCovarianceStamped,
+        #     "amcl_pose",
+        #     self._amcl_pose_callback,
+        #     amcl_pose_qos,
+        # )
         self.initial_pose_pub = self.parent_node.create_publisher(
             PoseWithCovarianceStamped, "initialpose", 10
         )
@@ -288,12 +289,30 @@ class NavManager:
             rclpy.spin_once(self.parent_node, timeout_sec=1)
         return
 
-    # --- 修正：amcl_poseコールバックで現在の姿勢を保存 ---
-    def _amcl_pose_callback(self, msg: PoseWithCovarianceStamped):
-        """AMCLから送られてくる自己位置推定結果を保存する"""
+    # --- 修正：tfコールバックで現在の姿勢を保存 ---
+    def _tf_callback(self, msg) :
         self.initial_pose_received = True
-        self.current_pose = msg.pose.pose # PoseWithCovarianceからPoseを抽出して保存
-        return
+        for transform in msg.transforms:
+            parent = transform.header.frame_id
+            child = transform.child_frame_id
+
+            if parent == "map" and child == "base_link":
+                self.current_pose = Pose()
+                self.current_pose.position = transform.transform.translation
+                self.current_pose.orientation = transform.transform.rotation
+
+                # self.get_logger().info(
+                #     f"[{parent} -> {child}] x={t.x:.2f}, y={t.y:.2f}, z={t.z:.2f} | rotation (quaternion)={r}"
+                # )
+                break
+        return 
+
+    # # --- 修正：amcl_poseコールバックで現在の姿勢を保存 ---
+    # def _amcl_pose_callback(self, msg: PoseWithCovarianceStamped):
+    #     """AMCLから送られてくる自己位置推定結果を保存する"""
+    #     self.initial_pose_received = True
+    #     self.current_pose = msg.pose.pose # PoseWithCovarianceからPoseを抽出して保存
+    #     return
         
     def _feedback_callback(self, msg):
         self.feedback = msg.feedback
