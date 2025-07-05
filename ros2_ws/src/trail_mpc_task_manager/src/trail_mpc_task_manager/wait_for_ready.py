@@ -8,7 +8,7 @@ from rclpy.time import Time
 # 検出を確定するまでの時間を定数として定義
 REQUIRED_DURATION_SEC = 5.0
 
-class WaitForHostReady:
+class WaitForReady:
     def __init__(self, parent_node: Node, voice_manager: VoiceManager):
         self.parent_node = parent_node
         self.voice_manager = voice_manager
@@ -17,6 +17,7 @@ class WaitForHostReady:
         self._is_running = False
         self._person_detected_start_time = None
         self._done_callback = None
+        self._whether_speak = False
 
         self.parent_node.create_subscription(
             ObjectDetectionListStamped,
@@ -27,10 +28,10 @@ class WaitForHostReady:
         
     def start(self, done_callback):
         """
-        ホスト待機タスクを開始する。
+        ホスト/ゲスト待機タスクを開始する。
         完了したら引数の done_callback(True) を呼び出す。
         """
-        self.parent_node.get_logger().info("Starting WaitForHostReady task.")
+        self.parent_node.get_logger().info("Starting WaitForReady task.")
         self.voice_manager.speak(f'準備ができたら、私の前に{int(REQUIRED_DURATION_SEC)}秒間立ってください。')
         
         # 状態をリセットして開始
@@ -41,7 +42,7 @@ class WaitForHostReady:
     def cancel(self):
         """タスクを中断する"""
         self._is_running = False
-        self.parent_node.get_logger().info("WaitForHostReady task cancelled.")
+        self.parent_node.get_logger().info("WaitForReady task cancelled.")
 
     def _object_detection_callback(self, detections: ObjectDetectionListStamped) -> None:
         # タスクが実行中でなければ何もしない
@@ -56,17 +57,20 @@ class WaitForHostReady:
             # 人を初めて検出した場合
             if self._person_detected_start_time is None:
                 self.parent_node.get_logger().info("Person detected. Starting timer.")
-                self.voice_manager.speak('認識しました。そのままお待ちください。')
                 self._person_detected_start_time = self.parent_node.get_clock().now()
             # 人を検出し続けている場合
             else:
                 elapsed = (self.parent_node.get_clock().now() - self._person_detected_start_time).nanoseconds / 1e9
                 self.parent_node.get_logger().info(f"Person detected for {elapsed:.1f} seconds.", throttle_duration_sec=1.0)
                 
+                if 2<= elapsed <=3:
+                    self._whether_speak = True
+                if self._whether_speak:
+                    self.voice_manager.speak('認識しました。そのままお待ちください。ホストまたはゲストでない場合はカメラの外に出てください。')
+                    self._whether_speak = False
                 # 規定時間を超えたらタスク完了
                 if elapsed >= REQUIRED_DURATION_SEC:
-                    self.parent_node.get_logger().info("Host is ready. Task complete.")
-                    self.voice_manager.speak('ありがとうございます。追従を開始します。')
+                    self.parent_node.get_logger().info("Host/Guest is ready. Task complete.")
                     
                     self._is_running = False # タスクを停止
                     if self._done_callback:

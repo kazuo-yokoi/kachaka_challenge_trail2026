@@ -16,8 +16,8 @@ from std_msgs.msg import Bool
 from kachaka_utils.voice_manager import VoiceManager
 
 # --- 追従パラメータ ---
-MAX_RANGE_FOR_FOLLOW = 1.6
-ANGULAR_TOLERANCE = 0.5
+MAX_RANGE_FOR_FOLLOW = 2
+ANGULAR_TOLERANCE = 0.3
 
 # --- 静止検出パラメータ ---
 STOP_DETECTION_DURATION_SEC = 10 #何秒間の静止で停止と判断するか
@@ -88,6 +88,7 @@ class Follower(Node):
         if request.data:
             self.get_logger().info("Following enabled. Starting main loop.")
             self._state = FollowerState.FOLLOWING
+            self.voice_manager().speak("追従を開始します。パーティー会場まで歩いてください。到着したら10秒間止まってください。")
             self._person_in_detection = False
             self._position_history.clear()
             # 0.1秒ごとにメインループ(_publish_cmd_vel)を実行するタイマーを開始
@@ -95,6 +96,7 @@ class Follower(Node):
         else:
             self.get_logger().info("Following disabled.")
             self._state = FollowerState.IDLE
+            self.voice_manager().speak("追従を停止します。")
             self._stop_robot()
             if self._timer and not self._timer.is_canceled():
                 self._timer.cancel()
@@ -117,6 +119,7 @@ class Follower(Node):
             self.get_logger().info('Person detected for the first time.')
             self._position_history.clear()
             self._person_in_detection = True
+
         """elif not is_person_found and self._person_in_detection:
             self.get_logger().info('Person lost.')
             self._person_in_detection = False"""
@@ -176,7 +179,6 @@ class Follower(Node):
         self.get_logger().info(f"{self._closest_angle=}, {self._closest_distance=}")
         cmd_vel = Twist()
         # if 0.3 < self._closest_angle < ANGULAR_TOLERANCE:
-
         if self._closest_distance > MAX_RANGE_FOR_FOLLOW :
             if self.previous_turn == "left":
                 self.get_logger().info("turn left")
@@ -189,16 +191,23 @@ class Follower(Node):
                 cmd_vel.linear.x = 0.5
         else :
             cmd_vel.linear.x = 0.4
-            cmd_vel.angular.z = self._closest_angle*2
-            if 0.3 < self._closest_angle:
+            cmd_vel.angular.z = self._closest_angle*3
+            if 0.0 < self._closest_angle:
                 self.get_logger().info("turn right")
                 self.previous_turn = "right"
             # elif -0.3 > self._closest_angle > -ANGULAR_TOLERANCE:
-            elif -0.3 > self._closest_angle:
+            elif -0.0 > self._closest_angle:
                 self.get_logger().info("turn left")
                 self.previous_turn = "left"
             else :
                 self.previous_turn = ""
+        """if 0.3 < self._closest_angle:
+            self.get_logger().info("turn right")
+            cmd_vel.angular.z = 1.0 #self._closest_angle*2
+        # elif -0.3 > self._closest_angle > -ANGULAR_TOLERANCE:
+        elif -0.3 > self._closest_angle:
+            self.get_logger().info("turn left")
+            cmd_vel.angular.z = -1.0
         # elif 0.15 < self._closest_angle < ANGULAR_TOLERANCE:
         # elif 0.3 < self._closest_angle:
         #     self.get_logger().info("turn right")
@@ -242,7 +251,7 @@ class Follower(Node):
             # 確認用のタイマーを開始
             self._confirmation_timer = self.create_timer(CONFIRMATION_TIMEOUT_SEC, self._on_confirmation_timeout)
             # 音声で呼びかけ
-            self.voice_manager.speak("到着しましたか。到着したら動かないでください。")
+            self.voice_manager.speak("到着しましたか。到着したら動かないでください。到着してなければ近くに来てください")
             # 確認期間中の動きを検出するため、履歴をクリア
             self._position_history.clear()
 

@@ -3,7 +3,10 @@
 from kachaka_utils.position_helper import get_named_pose
 from kachaka_utils.nav_manager import NavManager
 from kachaka_utils.voice_manager import VoiceManager
-from trail_mpc_task_manager.wait_for_ready import WaitForHostReady
+from kachaka_utils.llm_manager import LLMManager
+from kachaka_utils.camera_manager import CameraManager
+from trail_mpc_task_manager.wait_for_ready import WaitForReady
+from trail_mpc_task_manager.guest_meet_task import GuestMeetTaskManager
 
 import rclpy
 from rclpy.node import Node
@@ -20,7 +23,10 @@ class PartyTaskExecutor(Node):
         self.state = 'go_to_host_room'
         self.nav_manager = NavManager(self)
         self.voice_manager = VoiceManager(self)
-        self.wait_state = WaitForHostReady(self,self.voice_manager)
+        self.camera_manager = CameraManager(self)
+        self.llm_manager = LLMManager()
+        self.wait_state = WaitForReady(self,self.voice_manager)
+        self.guest_meet_task = GuestMeetTaskManager(self,camera_manager, self.voice_manager, self.llm_manager)
 
         # --- 追加：ホストが停止した最後の場所を保存する変数 ---
         self.last_known_host_pose: PoseStamped | None = None
@@ -68,9 +74,10 @@ class PartyTaskExecutor(Node):
         self.timeout_timer = self.create_timer(60.0, self._wait_for_host_timeout)
     
     def _on_host_ready_done(self, success: bool):
-        """WaitForHostReadyタスク完了時のコールバック"""
+        """WaitForReadyタスク完了時のコールバック"""
         if success:
             self.get_logger().info("Host is ready. Proceeding to follow_host.")
+            self.voice_manager.speak('ありがとうございます。準備が確認できました。')
             self._execute_follow_host()
         else:
             # 失敗した場合の処理
@@ -143,10 +150,37 @@ class PartyTaskExecutor(Node):
 
     def _execute_wait_for_guest_ready(self):
         """ゲストの準備ができたか確認する関数"""
+        self.state = 'wait_for_guest_ready'
         self.get_logger().info("State: wait_for_guest_ready")
-        self.voice_manager.speak("ゲストの準備ができましたら、教えてください。")
-        # ここにゲストの準備を確認するロジックを実装
-        self._execute_return_to_host()
+        # 完了時に _on_guest_ready_done を呼び出すように設定してタスクを開始
+        self.wait_state.start(done_callback=self._on_guest_ready_done) 
+        # 60秒のタイムアウトを設定
+        self.timeout_timer = self.create_timer(60.0, self._wait_for_guest_timeout)
+
+    def _on_guest_ready_done(self, success: bool):
+        """ゲストのWaitForReadyタスク完了時のコールバック"""
+        if success:
+            self.get_logger().info("Guest is ready. Execute guest_meet_task.")
+            if self.guest_meet_task.execute_guest_meet():
+                self._execute_return_to_host()
+        else:
+            # 失敗した場合の処理
+            self.get_logger().error("WaitForReady task failed or timed out.")
+            self._handle_mission_failure("ゲストの準備を確認できませんでした。")
+
+    def _wait_for_guest_timeout(self):
+        """wait_for_guestのタイムアウト時に実行される"""
+        # タイムアウトタイマーを破棄
+        if self.timeout_timer:
+            self.timeout_timer.cancel()
+            self.timeout_timer.destroy()
+
+        # 状態がまだ wait_for_host_ready の場合のみタイムアウト処理を実行
+        if self.state == 'wait_for_guest_ready':
+            self.get_logger().error("Timeout: Guest did not appear in time.")
+            self.wait_state.cancel() # 進行中のタスクを中断させる
+            self._handle_mission_failure("時間内にゲストを認識できませんでした。")
+
 
     def _execute_return_to_host(self):
         """保存したホストの場所に戻る"""
