@@ -39,6 +39,7 @@ class Follower(Node):
         # --- 状態変数 ---
         self._state = FollowerState.IDLE
         self._person_in_detection = False
+        self._is_person_found = False
 
         # --- 追従対象の位置情報 ---
         self._closest_distance = float("inf")
@@ -113,18 +114,14 @@ class Follower(Node):
         if self._state == FollowerState.IDLE:
             return
 
-        is_person_found = any(
+        self._is_person_found = any(
             obj.label == ObjectDetection.PERSON for obj in detections.detection
         )
 
-        if is_person_found and not self._person_in_detection:
+        if self._is_person_found and not self._person_in_detection:
             self.get_logger().info('Person detected for the first time.')
             self._position_history.clear()
             self._person_in_detection = True
-
-        """elif not is_person_found and self._person_in_detection:
-            self.get_logger().info('Person lost.')
-            self._person_in_detection = False"""
 
     def _laser_scan_callback(self, msg: LaserScan) -> None:
         """LiDARデータから最近傍物体を検出"""
@@ -181,7 +178,7 @@ class Follower(Node):
         self.get_logger().info(f"{self._closest_angle=}, {self._closest_distance=}")
         cmd_vel = Twist()
         # if 0.3 < self._closest_angle < ANGULAR_TOLERANCE:
-        if self._closest_distance > MAX_RANGE_FOR_FOLLOW :
+        if self._closest_distance > MAX_RANGE_FOR_FOLLOW: #or not self._is_person_found:
             if self.previous_turn == "left":
                 self.get_logger().info("turn left")
                 cmd_vel.angular.z = -1.0
