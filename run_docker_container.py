@@ -7,6 +7,7 @@ Usage: ./run_docker_container.py [PROJECT_NAME] [--real|-r]
 import argparse
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -27,6 +28,40 @@ class DockerContainerRunner:
         self.container = None
         self.use_real = False
         self.ros_domain_id = 1
+        self.use_gpu = self.detect_nvidia_gpu()
+
+    def detect_nvidia_gpu(self):
+        """Return whether an NVIDIA GPU is available on the host."""
+        candidates = ['nvidia-smi']
+        if platform.system() == 'Linux':
+            # WSL2 exposes the Windows NVIDIA driver through this path. It is
+            # not included in PATH on every WSL distribution.
+            candidates.append('/usr/lib/wsl/lib/nvidia-smi')
+
+        nvidia_smi = next(
+            (
+                executable
+                for candidate in candidates
+                for executable in (shutil.which(candidate), candidate)
+                if executable and Path(executable).is_file()
+            ),
+            None,
+        )
+        if not nvidia_smi:
+            return False
+
+        try:
+            result = subprocess.run(
+                [nvidia_smi, '-L'],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+        return result.returncode == 0 and 'GPU' in result.stdout
 
     def setup_project_name(self, project_name=None):
         """Set up project name and container name"""
@@ -52,6 +87,7 @@ class DockerContainerRunner:
         print(f"PROJECT={self.project}")
         print(f"MODE={'real' if self.use_real else 'sim'}")
         print(f"CONTAINER={self.container}")
+        print(f"GPU={'NVIDIA' if self.use_gpu else 'CPU'}")
 
     def run_command(self, cmd, shell=True, check=True, capture_output=False, env=None):
         """Run a command with proper error handling"""
@@ -103,16 +139,12 @@ class DockerContainerRunner:
         # Remove any conflicting containers from other modes
         self._remove_project_containers()
         
-        # Check if current container already exists
+        # Let Compose reconcile an existing container with the selected
+        # configuration. This is important when GPU availability changes.
         if self.container_exists():
             print(f"Container '{self.container}' already exists.")
-            print("Starting the existing container...")
-            try:
-                self.run_command(f"docker start {self.container}")
-            except subprocess.CalledProcessError:
-                print("Failed to start container. Removing and recreating...")
-                self.run_command(f"docker rm -f {self.container}", check=False)
-                self._create_new_container(display, profile)
+            print("Reconciling the existing container configuration...")
+            self._create_new_container(display, profile)
         else:
             print(f"Creating a new container '{self.container}'...")
             self._create_new_container(display, profile)
@@ -125,8 +157,12 @@ class DockerContainerRunner:
         }
         # Use project name with mode for Docker Compose project name
         project_with_mode = f"{self.project}_{'real' if self.use_real else 'sim'}"
+        compose_files = "-f ./docker/docker-compose.yml"
+        if self.use_gpu:
+            compose_files += " -f ./docker/docker-compose.gpu.yml"
+
         cmd = (f"docker compose --compatibility -p {project_with_mode} "
-               f"--profile {profile} -f ./docker/docker-compose.yml up -d")
+               f"--profile {profile} {compose_files} up -d")
         self.run_command(cmd, env=env)
 
     def setup_x11_auth(self):

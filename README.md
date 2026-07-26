@@ -54,6 +54,8 @@ make build-app
 ./run_docker_container.py <project_name>
 ```
 
+Windows で NVIDIA GPU を使用する場合も同じコマンドで起動できます。Docker Desktop の WSL2 バックエンド、WSL2 対応の NVIDIA ドライバを有効にして、WSL2 のターミナルから実行してください。起動スクリプトが `nvidia-smi` を検出した場合だけ GPU をコンテナに割り当てます。NVIDIA GPU がない場合や検出できない場合は、GPU 設定を付けず CPU で起動します。
+
 `-r` オプションをつけると実機 Kachaka にも接続できます（今回はシミュレーションのみ使用）。
 
 ### 2-3. VS Code でコンテナに接続する
