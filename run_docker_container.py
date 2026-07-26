@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to run a Docker container for Kachaka development
-Usage: ./run_docker_container.py [PROJECT_NAME] [--real|-r]
+Usage: ./run_docker_container.py [PROJECT_NAME] [--real|-r] [--novnc]
 """
 
 import argparse
@@ -27,8 +27,23 @@ class DockerContainerRunner:
         self.project = None
         self.container = None
         self.use_real = False
+        self.use_novnc = False
+        self.is_wsl = self.detect_wsl()
         self.ros_domain_id = 1
         self.use_gpu = self.detect_nvidia_gpu()
+
+    def detect_wsl(self):
+        """Return whether the script is running inside Windows Subsystem for Linux."""
+        if platform.system() != 'Linux':
+            return False
+
+        if os.environ.get('WSL_DISTRO_NAME') or os.environ.get('WSL_INTEROP'):
+            return True
+
+        try:
+            return 'microsoft' in Path('/proc/version').read_text().lower()
+        except OSError:
+            return False
 
     def detect_nvidia_gpu(self):
         """Return whether an NVIDIA GPU is available on the host."""
@@ -124,13 +139,25 @@ class DockerContainerRunner:
         """Run the Docker container"""
         # Handle different OS environments
         display = os.environ.get('DISPLAY', ':0')
-        profile = "linux"
+        use_novnc = platform.system() == "Darwin" or self.use_novnc
+        profile = "darwin" if use_novnc else "linux"
+
+        if self.is_wsl and self.use_novnc:
+            # The WSL NoVNC override puts both services on the same Compose
+            # network, so the project container can reach NoVNC's X server.
+            display = "novnc:0.0"
         
         if platform.system() == "Darwin":
             display = ":0"
-            profile = "darwin"
             print("\n" + "=" * 44)
             print("To view X11 applications from the container:")
+            print("1. Open a web browser and go to: http://localhost:8080/vnc.html")
+            print("2. Click 'Connect' in the browser")
+            print("3. Now you should see X11 applications that you run in the container")
+            print("=" * 44 + "\n")
+        elif self.use_novnc:
+            print("\n" + "=" * 44)
+            print("NoVNC is enabled.")
             print("1. Open a web browser and go to: http://localhost:8080/vnc.html")
             print("2. Click 'Connect' in the browser")
             print("3. Now you should see X11 applications that you run in the container")
@@ -160,6 +187,8 @@ class DockerContainerRunner:
         compose_files = "-f ./docker/docker-compose.yml"
         if self.use_gpu:
             compose_files += " -f ./docker/docker-compose.gpu.yml"
+        if self.is_wsl and self.use_novnc:
+            compose_files += " -f ./docker/docker-compose.wsl-novnc.yml"
 
         cmd = (f"docker compose --compatibility -p {project_with_mode} "
                f"--profile {profile} {compose_files} up -d")
@@ -169,6 +198,10 @@ class DockerContainerRunner:
         """Set up X11 authentication"""
         if platform.system() == "Darwin":
             print("macOS detected, X11 will be set up through NoVNC.")
+            return
+
+        if self.is_wsl and self.use_novnc:
+            print("WSL NoVNC is using the NoVNC container display.")
             return
 
         display = os.environ.get('DISPLAY')
@@ -223,10 +256,13 @@ class DockerContainerRunner:
         parser.add_argument('project_name', nargs='?', help='Project name')
         parser.add_argument('--real', '-r', action='store_true', 
                            help='Use real robot mode')
+        parser.add_argument('--novnc', action='store_true',
+                           help='Start the NoVNC service (enabled automatically on macOS)')
         
         args = parser.parse_args()
         
         self.use_real = args.real
+        self.use_novnc = args.novnc
         self.ros_domain_id = 0 if self.use_real else 1
         
         return args.project_name

@@ -1,0 +1,13 @@
+services:
+  kachaka_project:
+    # The base service uses host networking for ROS 2. When NoVNC is enabled
+    # in WSL, use the default Compose network so DISPLAY=novnc:0.0 works.
+    network_mode: !reset null
+    depends_on:
+      - novnc
+
+  novnc:
+    # The browser only needs the HTTP endpoint. Keeping the VNC/X11 ports
+    # private avoids collisions with an X server already running in WSL.
+    ports: !override
+      - "8080:8080"

@@ -54,6 +54,14 @@ make build-app
 ./run_docker_container.py <project_name>
 ```
 
+Windows の wsl を使用する場合は、`--novnc` オプションを付けて起動すると、ブラウザで ubuntu へアクセスすることができます（うまく動かない場合のみこのオプションを利用してください）。
+
+```bash
+./run_docker_container.py <project_name> --novnc
+```
+
+起動後、ブラウザで <http://localhost:8080/vnc.html> を開き、`Connect` をクリックします。macOS では従来どおり `--novnc` を付けなくても NoVNC が起動します。
+
 Windows で NVIDIA GPU を使用する場合も同じコマンドで起動できます。Docker Desktop の WSL2 バックエンド、WSL2 対応の NVIDIA ドライバを有効にして、WSL2 のターミナルから実行してください。起動スクリプトが `nvidia-smi` を検出した場合だけ GPU をコンテナに割り当てます。NVIDIA GPU がない場合や検出できない場合は、GPU 設定を付けず CPU で起動します。
 
 `-r` オプションをつけると実機 Kachaka にも接続できます（今回はシミュレーションのみ使用）。
